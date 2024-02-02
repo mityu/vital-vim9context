@@ -1,0 +1,194 @@
+*vital/Vim/Vim9context.txt*     A |vital.vim| module for Vim scripting.
+
+Maintainer: mityu <mityu.mail (at) gmail.com>
+License: NYSL (http://www.kmonos.net/nysl/)
+
+==============================================================================
+CONTENTS				*Vital.Vim.Vim9context-contents*
+
+INTRODUCTION				|Vital.Vim.Vim9context-introduction|
+EXAMPLES				|Vital.Vim.Vim9context-examples|
+INTERFACE				|Vital.Vim.Vim9context-interface|
+  VARIABLES				|Vital.Vim.Vim9context-variables|
+  FUNCTIONS				|Vital.Vim.Vim9context-functions|
+
+
+==============================================================================
+INTRODUCTION				*Vital.Vim.Vim9context-introduction*
+
+*Vital.Vim.Vim9context* is a |vital.vim| module for Vim scripting.
+This module can determine whether the context at any position in the buffer is
+legacy vim script or Vim9 script(|vim9script|).
+
+
+==============================================================================
+EXAMPLES				*Vital.Vim.Vim9context-examples*
+
+Simple single-line comment out function for Vim/Vim9 script. >
+	let s:Vim9context = vital#vital#import('Vim.Vim9context')
+	function CommentOutCurrentLine() abort
+	  let column = match(getline('.'), '\S')
+	  if column == -1
+	    let column = 1
+	  endif
+	  let context = s:Vim9context.get_context_pos(line('.'), column)
+	  let comment_char = '"'
+	  if context == s:Vim9context.CONTEXT_VIM9_SCRIPT
+	    let comment_char = '#'
+	  endif
+	  let curpos = getcurpos('.')
+	  try
+	    let linestr =
+	    \  substitute(getline('.'), '\ze\S', comment_char . ' ', '')
+	    call setline('.', linestr)
+	  finally
+	    let curpos[2] += 2
+	    call setpos('.', curpos)
+	  endtry
+	endfunction
+	command! CommentOutCurrentLine call CommentOutCurrentLine()
+<
+
+==============================================================================
+INTERFACE				*Vital.Vim.Vim9context-interface*
+
+------------------------------------------------------------------------------
+VARIABLES				*Vital.Vim.Vim9context-variables*
+
+Vim9context module has some constant values.
+
+				*Vital.Vim.Vim9context-context-constants*
+Context Constants~
+
+These constants are used to indicate the script context.
+.get_context() function(|Vital.Vim.Vim9context.get_context()|) and
+.get_context_pos() function(|Vital.Vim.Vim9context.get_context_pos()|)
+will return one of these constants so you can know the script context by
+comparing the returned value and these constants with |expr-==|.
+Please refer to |Vital.Vim.Vim9context-examples| to see simple usage.
+
+				*Vital.Vim.Vim9context.CONTEXT_VIM_SCRIPT*
+.CONTEXT_VIM_SCRIPT
+	A constant which indicates that the script context is legacy vim
+	script.
+
+				*Vital.Vim.Vim9context.CONTEXT_VIM9_SCRIPT*
+.CONTEXT_VIM9_SCRIPT
+	A constant which indicates that the script context is Vim9 script.
+
+------------------------------------------------------------------------------
+FUNCTIONS				*Vital.Vim.Vim9context-functions*
+
+.get_context()				*Vital.Vim.Vim9context.get_context()*
+	Returns the context at the cursor position.  The return value is one
+	of the |Vital.Vim.Vim9context-context-constants|.  This function is a
+	short hand of `get_context_pos(line('.'), col('.'))` .
+
+	Examples:
+	Note that the character "|" shows the cursor position below.
+
+	- Assume the buffer contents are: >
+		vim9script
+
+		function! Legacy() abort
+		  echo 'Hello' |
+		endfunction
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		vim9script
+
+		legacy echo 'Hello' |
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		def! Vim9Func()
+		  echo 'Hello' |
+		enddef
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM9_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		def! Vim9Func() |
+		  echo 'Hello'
+		enddef
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM9_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		command! GreatCommand {
+		  echo 'Hello' |
+		}
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM9_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		autocmd myGroup VimEnter * {
+		  echo 'Hello' |
+		}
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM9_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		vim9cmd echo 'Hello' |
+<
+	  the distinguished context is: >
+		:call .get_context()  "=> .CONTEXT_VIM9_SCRIPT
+<
+
+
+				*Vital.Vim.Vim9context.get_context_pos()*
+.get_context_pos({line}, {col})
+	Returns the context at the given position in the current buffer.
+	Unlike |line()| or |col()|, etc, {line} and {col} must be a number.
+	The return value is one of the
+	|Vital.Vim.Vim9context-context-constants|.
+
+	Examples:
+	- Assume the buffer contents are: >
+		vim9script
+
+		echo 'Hello'
+		function Legacy() abort
+		  echo 'Hello'
+		endfunction
+<
+	  the distinguished contexts are: >
+		:call .get_context_pos(3, 1)  "=> .CONTEXT_VIM9_SCRIPT
+		:call .get_context_pos(4, 1)  "=> .CONTEXT_VIM9_SCRIPT
+		:call .get_context_pos(4, col([2, '$']))
+					"=> .CONTEXT_VIM_SCRIPT
+		:call .get_context_pos(5, 1)  "=> .CONTEXT_VIM_SCRIPT
+<
+
+	- Assume the buffer contents are: >
+		echo 'Hello'
+		def! Vim9Func()
+		  echo 'Hello'
+		enddef
+<
+	  the distinguished contexts are: >
+		:call .get_context_pos(1, 1)  "=> .CONTEXT_VIM_SCRIPT
+		:call .get_context_pos(2, 1)  "=> .CONTEXT_VIM_SCRIPT
+		:call .get_context_pos(3, 1)  "=> .CONTEXT_VIM9_SCRIPT
+		:call .get_context_pos(2, col([2, '$']))
+					"=> .CONTEXT_VIM_SCRIPT
+<
+
+
+==============================================================================
+vim:tw=78:fo=tcq2mM:ts=8:ft=help:norl
