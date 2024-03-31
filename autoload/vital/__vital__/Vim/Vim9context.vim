@@ -144,7 +144,7 @@ endfunction
 function! s:_determine_context_by_file(linenr) abort
   let curpos = getpos('.')
   try
-    normal! gg0
+    call cursor(1, 1)
     let linenr = search('^\s*\<vim9s\%[cript]\>\%(\s\+noclear\)\?\s*$',
           \ 'cnW', a:linenr)
     if linenr <= 0 || linenr == a:linenr
